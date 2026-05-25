@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Friday assistant local files
+.env
+.env.local
+config.local.py
+routines.local.json
+logs/
+*.wav
+*.mp3
+*.m4a

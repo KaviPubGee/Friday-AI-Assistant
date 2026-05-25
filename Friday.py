@@ -6,36 +6,58 @@ import wikipedia
 import pywhatkit
 import pyautogui
 import pyjokes
+import time
 
 ASSISTANT_NAME = "friday"
 
-engine = pyttsx3.init('sapi5')
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)
-
-def speak(audio, rate=170, volume=1.0):
+def speak(audio, rate=145, volume=1.0):
     print(f"Friday: {audio}")
-    engine.setProperty('rate', rate)  # Adjust the rate of speech
-    engine.setProperty('volume', volume)  # Adjust the volume (0.0 to 1.0)
-    engine.say(audio)
-    engine.runAndWait()
+
+    try:
+        speaker = pyttsx3.init('sapi5')
+        voices = speaker.getProperty('voices')
+        speaker.setProperty('voice', voices[0].id)
+        speaker.setProperty('rate', rate)  # Adjust the rate of speech
+        speaker.setProperty('volume', volume)  # Adjust the volume (0.0 to 1.0)
+
+        speaker.say(audio)
+        speaker.runAndWait()
+        speaker.stop()
+
+        del speaker
+        time.sleep(1)
+
+    except Exception as e:
+        print("Speech error: ", e)
 
 def commands():
     r=sr.Recognizer()
+
     with sr.Microphone() as source:
         print("Listening...")
-        r.pause_threshold=0.5
-        r.adjust_for_ambient_noise(source, duration=0.2)
-        audio = r.listen(source)
+        r.pause_threshold=1.2
+        r.adjust_for_ambient_noise(source, duration=0.5)
+
+        try:
+            audio = r.listen(source, timeout=5, phrase_time_limit=10)
+        except sr.WaitTimeoutError:
+            print("No speech detected")
+            return "none"
 
     try:
         print("Please wait...")
-        query=r.recognize_google(audio, language='en-in')
+        query=r.recognize_google(audio, language='en-US')
         print(f"You just said: {query}\n")
-    except Exception as e:
-        print(e)
-        speak("")
+        return query
+    
+    except sr.UnknownValueError:
+        print("Could not understand audio.")
         query="none"
+
+    except sr.RequestError:
+        print("Speech recognition service error")
+        return "none"
+
     return query
 
 def wishings():
@@ -50,7 +72,7 @@ def wishings():
         print("Good Evening Sir")
         speak("Good Evening Sir")
 
-def time():
+def tell_time():
     str_time = datetime.datetime.now().strftime("%H:%M:%S")
     speak(f"Its currently {str_time}")
     print(str_time)
@@ -101,19 +123,21 @@ def jokes():
     speak(joke)
 
 if __name__ == "__main__":
-        wishings()
-        speak("All systems online. How may i help?")
+        speak("Friday is online. What would you like to do today?")
 
         while True:
             query = commands().lower()
 
+            if query == "none":
+                continue
+
             if ASSISTANT_NAME in query: #checks for the keyword friday in each query like a wakeup call
 
                 if 'time' in query:
-                    time()
+                    tell_time()
 
                 #ducks are the best
-                elif 'duck' in query:
+                elif 'quack' in query:
                     ducks()
 
                 #letting friday sleep and making him power off
@@ -162,3 +186,6 @@ if __name__ == "__main__":
 
                 elif 'joke' in query:
                     jokes()
+
+            else:
+                print("Wake word not detected")
