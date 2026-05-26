@@ -10,6 +10,24 @@ import time
 
 ASSISTANT_NAME = "friday"
 
+APPS = {
+    "unity": r"C:\Program Files\Unity Hub\Unity Hub.exe",
+    "opera": r"C:\Users\ASUS\AppData\Local\Programs\Opera GX\opera.exe",
+    "spotify": r"C:\Users\ASUS\AppData\Roaming\Spotify\Spotify.exe",
+    "vscode": r"C:\Users\ASUS\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+}
+
+APP_ALIASES = {
+    "visual studio code": "vscode",
+    "vs code": "vscode",
+    "code": "vscode",
+    "unity hub": "unity"
+}
+
+ROUTINES = {
+    "work mode": ["unity", "vscode"]
+}
+
 def speak(audio, rate=145, volume=1.0):
     print(f"Friday: {audio}")
 
@@ -80,6 +98,44 @@ def tell_time():
 def ducks():
     speak("Ducks are cool!")
 
+def open_app(app_name):
+    if app_name in APPS:
+        speak(f"Opening {app_name}")
+        os.startfile(APPS[app_name])
+    else:
+        speak(f"I do not have the app location for {app_name} yet. Sorry")
+
+def handle_open_commands(query):
+    for app_name in APPS:
+        if app_name in query:
+            open_app(app_name)
+            return
+        
+    for alias, app_name in APP_ALIASES.items():
+        if alias in query:
+            open_app(app_name)
+            return
+        
+    speak(f"I do not have that app location yet. Sorry")
+
+def run_routine(routine_name):
+    if routine_name not in ROUTINES:
+        speak(f"I do not know the routine {routine_name}.")
+        return
+    
+    speak(f"Starting {routine_name}.")
+
+    for app_name in ROUTINES[routine_name]:
+        open_app(app_name)
+
+def handle_routine_command(query):
+    for routine_name in ROUTINES:
+        if routine_name  in query:
+            run_routine(routine_name)
+            return True
+        
+    return False
+
 def search(query):
     speak("Searching Wikipedia")
 
@@ -133,6 +189,9 @@ if __name__ == "__main__":
 
             if ASSISTANT_NAME in query: #checks for the keyword friday in each query like a wakeup call
 
+                if handle_routine_command(query):
+                    continue
+
                 if 'time' in query:
                     tell_time()
 
@@ -158,9 +217,8 @@ if __name__ == "__main__":
                     speak("Opening Skype..")
                     os.startfile("C:\\Program Files (x86)\\Microsoft\\Skype for Desktop\\Skype.exe")
 
-                elif 'open unity' in query:
-                        speak("Opening Unity..")
-                        os.startfile("C:\\Program Files\\Unity Hub\\Unity Hub.exe")
+                elif 'open' in query:
+                        handle_open_commands(query)
 
                 elif 'open pycharm' in query:
                         speak("Opening Pycharm..")
