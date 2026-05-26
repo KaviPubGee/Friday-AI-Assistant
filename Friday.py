@@ -7,8 +7,25 @@ import pywhatkit
 import pyautogui
 import pyjokes
 import time
+import edge_tts
+import asyncio
+from playsound import playsound
+from faster_whisper import WhisperModel
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 ASSISTANT_NAME = "friday"
+WAKE_WORDS = ["friday", "fridays"]
+
+VOICE = "en-US-AriaNeural"
+
+WHISPER_MODEL_SIZE = "base"
+WHISPER_DEVICE = "cpu"
+WHISPER_COMPUTE_TYPE = "int8"
+
+SAMPLE_RATE = 16000
+RECORD_SECONDS = 6
+COMMAND_AUDIO_FILE = "command.wav"
 
 APPS = {
     "unity": r"C:\Program Files\Unity Hub\Unity Hub.exe",
@@ -28,43 +45,98 @@ ROUTINES = {
     "work mode": ["unity", "vscode"]
 }
 
-def speak(audio, rate=145, volume=1.0):
+ROUTINE_ALIASES = {
+    "let's get to work": "work mode",
+    "lets get to work": "work mode",
+    "time to work": "work mode",
+    "start work": "work mode",
+    "dev mode": "work mode",
+    "development mode": "work mode"
+}
+
+print("Loading Whisper model...")
+whisper_model = WhisperModel(
+    WHISPER_MODEL_SIZE,
+    device=WHISPER_DEVICE,
+    compute_type=WHISPER_COMPUTE_TYPE
+)
+print("Whisper model loaded.")
+
+async def speak_async(audio):
+    communicate = edge_tts.Communicate(audio, VOICE)
+    await communicate.save("friday_voice.mp3")
+
+def speak(audio):
     print(f"Friday: {audio}")
 
     try:
-        speaker = pyttsx3.init('sapi5')
-        voices = speaker.getProperty('voices')
-        speaker.setProperty('voice', voices[0].id)
-        speaker.setProperty('rate', rate)  # Adjust the rate of speech
-        speaker.setProperty('volume', volume)  # Adjust the volume (0.0 to 1.0)
+        asyncio.run(speak_async(audio))
+        playsound("friday_voice.mp3")
 
-        speaker.say(audio)
-        speaker.runAndWait()
-        speaker.stop()
-
-        del speaker
-        time.sleep(1)
+        if os.path.exists("friday_voice.mp3"):
+            os.remove("friday_voice.mp3")
 
     except Exception as e:
-        print("Speech error: ", e)
+        print("Voice error: ", e)
+
+def commands_whisper():
+    print("Listening with Whisper...")
+
+    try:
+        recording = sd.rec(
+            int(RECORD_SECONDS * SAMPLE_RATE),
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            dtype="int16"
+        )
+
+        sd.wait()
+        write(COMMAND_AUDIO_FILE, SAMPLE_RATE, recording)
+
+        print("Recognizing with Whisper...")
+        segments, info = whisper_model.transcribe(
+            COMMAND_AUDIO_FILE,
+            beam_size=5
+        )
+
+        query = ""
+        for segment in segments:
+            query += segment.text
+
+        query = query.lower().strip()
+
+        if query == "":
+            print("Whisper heard nothing.")
+            return "none"
+        
+        print(f"You said: {query}\n")
+        return query
+    
+    except Exception as e:
+        print("Whisper command error: ", e)
+        return "none"
 
 def commands():
     r=sr.Recognizer()
 
     with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold=1.2
-        r.adjust_for_ambient_noise(source, duration=0.5)
+        print("Calibrating microphone...")
+        r.dynamic_energy_threshold = True
+        r.pause_threshold = 1.5
+        r.adjust_for_ambient_noise(source, duration=0.8)
 
+        print("Listening...")
+        
         try:
-            audio = r.listen(source, timeout=5, phrase_time_limit=10)
+            audio = r.listen(source, timeout=7, phrase_time_limit=12)
         except sr.WaitTimeoutError:
             print("No speech detected")
             return "none"
 
     try:
-        print("Please wait...")
-        query=r.recognize_google(audio, language='en-US')
+        print("Recognizing...")
+        query = r.recognize_google(audio, language='en-GB')
+        query = query.lower().strip()
         print(f"You just said: {query}\n")
         return query
     
@@ -123,7 +195,7 @@ def run_routine(routine_name):
         speak(f"I do not know the routine {routine_name}.")
         return
     
-    speak(f"Starting {routine_name}.")
+    speak(f"{routine_name} activated.")
 
     for app_name in ROUTINES[routine_name]:
         open_app(app_name)
@@ -131,6 +203,11 @@ def run_routine(routine_name):
 def handle_routine_command(query):
     for routine_name in ROUTINES:
         if routine_name  in query:
+            run_routine(routine_name)
+            return True
+        
+    for alias, routine_name in ROUTINE_ALIASES.items():
+        if alias in query:
             run_routine(routine_name)
             return True
         
@@ -182,12 +259,12 @@ if __name__ == "__main__":
         speak("Friday is online. What would you like to do today?")
 
         while True:
-            query = commands().lower()
+            query = commands_whisper()
 
             if query == "none":
                 continue
 
-            if ASSISTANT_NAME in query: #checks for the keyword friday in each query like a wakeup call
+            if any(wake_word in query for wake_word in WAKE_WORDS): #checks for the keyword friday in each query like a wakeup call
 
                 if handle_routine_command(query):
                     continue
@@ -246,4 +323,4 @@ if __name__ == "__main__":
                     jokes()
 
             else:
-                print("Wake word not detected")
+                print(f"Wake word not detected in: {query}")
