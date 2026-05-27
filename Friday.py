@@ -233,6 +233,23 @@ def commands_google():
     except sr.RequestError:
         print("Speech recognition service error.")
         return "none"
+    
+
+def has_wake_word(query):
+    """
+    Checks if the user's speech contains one of Friday's wake words
+    """
+    return any(wake_word in query for wake_word in WAKE_WORDS)
+
+
+def remove_wake_word(query):
+    """
+    Removes wake words from the command so Friday can process the real instruction
+    """
+    for wake_word in WAKE_WORDS:
+        query = query.replace(wake_word, "")
+
+    return query.strip()
 
 
 def listen_for_command():
@@ -479,15 +496,21 @@ if __name__ == "__main__":
         if query == "none":
             continue
 
-        wake_word_detected = any(
-            wake_word in query for wake_word in WAKE_WORDS
-        )
-
-        if not wake_word_detected:
+        if not has_wake_word(query):
             print(f"Wake word not detected in: {query}")
             continue
 
-        result = process_command(query)
+        command = remove_wake_word(query)
+
+        if command == "":
+            speak("Yes sir?")
+            command = listen_for_command()
+
+            if command == "none":
+                speak("I did not catch that")
+                continue
+
+        result = process_command(command)
 
         if result == "sleep":
             break
