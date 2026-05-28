@@ -11,9 +11,7 @@ import wikipedia
 import subprocess
 import requests
 
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from pycaw.pycaw import AudioUtilities
 
 import config
 import tts
@@ -237,8 +235,7 @@ def typing_mode():
 def volume_control(action):
     try:
         devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        volume = cast(interface, POINTER(IAudioEndpointVolume))
+        volume = devices.EndpointVolume
 
         if action == "mute":
             volume.SetMute(1, None)
@@ -259,15 +256,39 @@ def volume_control(action):
         tts.speak("Volume adjustment failed.")
 
 
+def _get_desktop_path():
+    """Gets the real Desktop path via Windows Registry (handles OneDrive redirection)."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+        )
+        desktop, _ = winreg.QueryValueEx(key, "Desktop")
+        winreg.CloseKey(key)
+        if os.path.isdir(desktop):
+            return desktop
+    except Exception:
+        pass
+    # Fallback: try standard paths
+    for candidate in [
+        os.path.join(os.environ.get("USERPROFILE", ""), "OneDrive", "Desktop"),
+        os.path.join(os.environ.get("USERPROFILE", ""), "Desktop"),
+    ]:
+        if os.path.isdir(candidate):
+            return candidate
+    # Last resort: save next to main.py
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def take_screenshot():
     tts.speak("Screenshot taken.")
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Save to user's Desktop
-    desktop = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
+    desktop = _get_desktop_path()
     filename = os.path.join(desktop, f"screenshot_{timestamp}.png")
     time.sleep(0.5)
     pyautogui.screenshot(filename)
-    tts.speak(f"Saved to your Desktop as screenshot_{timestamp}.")
+    tts.speak(f"Saved to your Desktop.")
     print(f"Screenshot saved: {filename}")
 
 
