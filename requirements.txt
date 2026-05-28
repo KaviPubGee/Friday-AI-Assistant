@@ -1,0 +1,11 @@
+requests
+SpeechRecognition
+faster-whisper
+edge-tts
+playsound==1.2.2
+pycaw
+comtypes
+PyAutoGUI
+pyjokes
+pywhatkit
+wikipedia

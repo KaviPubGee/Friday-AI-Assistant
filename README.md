@@ -1,46 +1,61 @@
-# Friday - Personal Voice Assistant
+# Friday - Personal AI Voice Assistant
 
-Friday is a Python-based personal voice assistant inspired by fictional AI assistants like J.A.R.V.I.S.  
-The goal of this project is to create a voice-controlled desktop assistant that can listen, speak, open apps, run routines, and help with daily computer tasks.
+Friday is an advanced, fully AI-driven Python-based personal voice assistant inspired by fictional AI assistants like J.A.R.V.I.S. and F.R.I.D.A.Y.
+Unlike rigid, keyword-based scripts, Friday uses a local Large Language Model (Ollama) to dynamically parse context, intents, and conversational memory, making her a truly intelligent desktop assistant.
 
-## Current Features
+## Features
 
-- Voice recognition
-- Text-to-speech replies
-- Basic wake word detection
-- Tells the current time
-- Opens selected desktop apps
-- Plays videos/music on YouTube
-- Searches Wikipedia
-- Tells programming jokes
-- Basic typing assistant mode
+- **100% AI-Driven Brain**: Uses a local LLM to understand commands contextually without needing exact keywords.
+- **Persistent Memory**: Remembers past conversations, context, and jokes in a persistent `memory.json` file.
+- **Dynamic App Locator**: Ask her to open an app, and she will recursively search your PC for the `.exe`, save its path, and launch it instantly.
+- **Media Player**: Ask her to play a song, and she will intelligently ask "Spotify or YouTube?". She can autoplay your desktop Spotify or search YouTube.
+- **PC Controls**: Native support for taking screenshots and controlling your PC's volume (Mute, Up, Down).
+- **Background Reminders**: Set timers and reminders that run asynchronously without freezing her ability to listen to you.
+- **Morning Briefings**: On startup, she can fetch the top world news headlines and read them to you.
+- **Live Weather**: Uses Open-Meteo and IP-based geolocation to give you accurate, live local weather updates.
+- **Advanced Speech Tech**: Uses `faster-whisper` for incredibly crisp, offline speech-to-text with hallucination filters, and Microsoft's `edge-tts` for a high-quality, natural-sounding voice.
 
-## Planned Features
+## Prerequisites
 
-- Custom voice routines  
-  Example: "Friday, let's get to work" opens Unity, VS Code, Spotify, and project folders.
+Before running Friday, you need to have [Ollama](https://ollama.ai/) installed and running locally with the `llama3.2:3b` model downloaded.
+```bash
+ollama run llama3.2:3b
+```
 
-- Gaming mode  
-  Example: "Friday, gaming time" closes approved background apps and opens a game.
+## Installation
 
-- Better wake word handling  
-  Friday should only respond when directly called.
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/Friday-AI-Assistant.git
+cd Friday-AI-Assistant
+```
 
-- Safer app control  
-  Only approved apps should be opened or closed.
+2. Create a virtual environment and activate it:
+```bash
+python -m venv .venv
+# Windows
+.\.venv\Scripts\activate
+# Mac/Linux
+source .venv/bin/activate
+```
 
-- Memory for custom phrases  
-  Teach Friday what a phrase should do, then use it later.
+3. Install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-- Floating assistant bubble UI  
-  A small voice bubble that appears while Friday is listening or speaking.
+4. Run Friday:
+```bash
+python main.py
+```
 
 ## Tech Stack
 
-- Python
-- pyttsx3
-- SpeechRecognition
-- pywhatkit
-- pyautogui
-- wikipedia
-- pyjokes
+- **Python 3.11+**
+- **Ollama** (Local LLM intent parsing & chat)
+- **faster-whisper** (Offline Speech-to-Text)
+- **edge-tts** (High-quality Neural Text-to-Speech)
+- **pycaw** (Windows Volume Control)
+- **pyautogui** (Screenshots & Automation)
+- **requests** (Weather & News API)
+- **SpeechRecognition** (Microphone handling & ambient noise calibration)

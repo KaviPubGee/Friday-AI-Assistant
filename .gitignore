@@ -221,8 +221,11 @@ __marimo__/
 .env
 .env.local
 config.local.py
-routines.local.json
 logs/
 *.wav
 *.mp3
 *.m4a
+memory.json
+apps.json
+routines.json
+screenshot_*.png

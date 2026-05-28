@@ -99,7 +99,14 @@ def process_command(query, conversation_history):
         actions.search_wikipedia(command.get("query", ""))
 
     elif intent == "play_media":
-        actions.play_media(command.get("query", ""), command.get("platform", ""))
+        query = command.get("query", "").strip()
+        if not query:
+            tts.speak("What would you like me to play?")
+            query = stt.listen_for_command()
+            if query == "none":
+                tts.speak("Cancelled.")
+                return "command"
+        actions.play_media(query, command.get("platform", ""))
 
     elif intent == "typing_mode":
         actions.typing_mode()
@@ -119,16 +126,20 @@ def process_command(query, conversation_history):
         actions.take_screenshot()
         
     elif intent == "set_reminder":
-        reminders.set_reminder(command.get("message", ""), int(command.get("delay_seconds", 60)))
+        try:
+            delay = int(float(str(command.get("delay_seconds", 60))))
+        except (ValueError, TypeError):
+            delay = 60
+        reminders.set_reminder(command.get("message", "reminder"), delay)
         
     elif intent == "briefing":
         briefing.get_morning_briefing()
         
     elif intent == "play_game":
         game = command.get("game", "")
-        actions.handle_open_command(game)
-        tts.speak(f"Enjoy your game of {game}, sir. I will shut down now to save system resources.")
+        tts.speak(f"Opening {game}. Going offline to free up resources.")
         memory.save_memory(conversation_history)
+        actions.handle_open_command(game)
         return "shutdown"
 
     else:
