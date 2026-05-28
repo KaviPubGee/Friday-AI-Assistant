@@ -12,12 +12,14 @@ import config
 # ----------------------------
 # Voice System
 # ----------------------------
-async def speak_async(audio):
+import uuid
+
+async def speak_async(audio, filename):
     """
     Creates a voice audio file using Edge TTS.
     """
     communicate = edge_tts.Communicate(audio, config.VOICE)
-    await communicate.save(config.VOICE_AUDIO_FILE)
+    await communicate.save(filename)
 
 
 def speak(audio):
@@ -25,13 +27,16 @@ def speak(audio):
     Makes Friday speak using Edge TTS.
     """
     print(f"Friday: {audio}")
+    
+    # Generate unique filename so background threads (timers) don't crash the main thread
+    unique_file = f"friday_voice_{uuid.uuid4().hex}.mp3"
 
     try:
-        asyncio.run(speak_async(audio))
-        playsound(config.VOICE_AUDIO_FILE)
+        asyncio.run(speak_async(audio, unique_file))
+        playsound(unique_file)
 
-        if os.path.exists(config.VOICE_AUDIO_FILE):
-            os.remove(config.VOICE_AUDIO_FILE)
+        if os.path.exists(unique_file):
+            os.remove(unique_file)
 
     except Exception as e:
         print("Voice error:", e)

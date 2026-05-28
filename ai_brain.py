@@ -3,73 +3,78 @@
 # ----------------------------
 import json
 import requests
-
 import config
 
-
 def build_ai_prompt(query):
-    allowed_apps = list(config.APPS.keys())
-    allowed_routines = list(config.ROUTINES.keys())
-
     return f"""
     You are the intent parser for Friday, a desktop voice assistant.
 
     Your job:
     Convert the user's command into ONE safe JSON object.
 
-    Allowed intents:
-    - open_app
-    - run_routine
+    Allowed intents and their required parameters:
+    - open_app (requires "app" string, even if you don't think it's installed. e.g. "discord")
+    - run_routine (requires "routine" string)
     - tell_time
-    - play_youtube
-    - search_wikipedia
+    - weather
+    - play_media (requires "query" string. e.g. song or artist name, and an optional "platform" string if they specify spotify or youtube)
+    - search_wikipedia (requires "query" string)
     - joke
     - thanks
     - sleep
     - shutdown
-    - unknown
-
-    Allowed apps:
-    {allowed_apps}
-
-    Allowed routines:
-    {allowed_routines}
+    - volume_control (requires "action" string: "up", "down", "mute", or "unmute")
+    - screenshot
+    - set_reminder (requires "message" string, and "delay_seconds" integer)
+    - briefing (for morning briefings or news)
+    - play_game (requires "game" string, e.g. "valorant")
+    - unknown (for general conversation or questions)
 
     Rules:
-    1. Return ONLY valid JSON.
-    2. Do not explain anything.
+    1. Return ONLY raw JSON. No backticks, no markdown, no explanations.
+    2. Do not start your response with "Here is the JSON" or anything similar. Just the JSON object.
     3. Do not run code.
-    4. Do not invent app names.
-    5. If the user asks to open an app not in allowed apps, return unknown.
-    6. If unsure, return unknown.
-
-    Intent priority:
-    1. If the command sounds like starting work, coding, game development, productivity, or "get to work", prefer run_routine if a matching routine exists.
-    2. Only return "joke" if the user clearly asks for a joke, says "tell me a joke", or says "make me laugh".
-    3. Do not return "joke" just because the user says "what do you say".
-    4. If the user asks to open an app that is not in the allowed apps list, return unknown.
+    4. If the user asks a conversational question like "what songs do you know", "who is", "what is", return unknown.
     5. If unsure, return unknown.
 
     Examples:
     User: "launch unity for me"
     Response: {{"intent": "open_app", "app": "unity"}}
 
-    User: "start my work setup"
-    Response: {{"intent": "run_routine", "routine": "work mode"}}
+    User: "open discord"
+    Response: {{"intent": "open_app", "app": "discord"}}
 
-    User: "put on lofi music"
-    Response: {{"intent": "play_youtube", "query": "lofi music"}}
+    User: "put on some lofi music"
+    Response: {{"intent": "play_media", "query": "lofi music", "platform": ""}}
+
+    User: "play perfect by ed sheeran on spotify"
+    Response: {{"intent": "play_media", "query": "perfect by ed sheeran", "platform": "spotify"}}
 
     User: "what time is it"
     Response: {{"intent": "tell_time"}}
 
-    User: "what do you say we get to work"
-    Response: {{"intent": "run_routine", "routine": "work mode"}}
+    User: "what is the weather like"
+    Response: {{"intent": "weather"}}
 
-    User: "tell me a joke"
-    Response: {{"intent": "joke"}}
+    User: "set a reminder to check the oven in 5 minutes"
+    Response: {{"intent": "set_reminder", "message": "check the oven", "delay_seconds": 300}}
 
-    User: "what do you say"
+    User: "turn the volume up"
+    Response: {{"intent": "volume_control", "action": "up"}}
+
+    User: "mute the pc"
+    Response: {{"intent": "volume_control", "action": "mute"}}
+
+    User: "take a screenshot"
+    Response: {{"intent": "screenshot"}}
+
+    User: "what's the news today"
+    Response: {{"intent": "briefing"}}
+
+    User: "let's play valorant"
+    Response: {{"intent": "play_game", "game": "valorant"}}
+
+    User: "what songs do you know of malcolm todd"
     Response: {{"intent": "unknown"}}
 
     User command:
@@ -95,9 +100,23 @@ def ask_ollama_for_intent(query):
         response.raise_for_status()
 
         data = response.json()
-        content = data["message"]["content"]
+        content = data["message"]["content"].strip()
+
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+
+        if not content:
+            print("AI brain returned empty response.")
+            return {"intent": "unknown", "query": query}
 
         return json.loads(content)
+
+    except json.JSONDecodeError:
+        print("AI brain returned non-JSON response. Treating as unknown.")
+        return {"intent": "unknown", "query": query}
 
     except Exception as e:
         print("AI brain error:", e)
@@ -106,35 +125,20 @@ def ask_ollama_for_intent(query):
             "query": query
         }
     
-
 def understand_with_ai(query):
     if not config.AI_BRAIN_ENABLED:
-        return {
-            "intent": "unknown",
-            "query": query
-        }
+        return {"intent": "unknown", "query": query}
 
     if config.AI_PROVIDER == "ollama":
         return ask_ollama_for_intent(query)
 
-    return {
-        "intent": "unknown",
-        "query": query
-    }
+    return {"intent": "unknown", "query": query}
 
 
-# ----------------------------
-# FIX 1: conversation_history is now passed in so Friday remembers context!
-# This means when you say "explain the joke", she knows what joke she told.
-# ----------------------------
 def chat_with_ai(query, conversation_history=None):
     if conversation_history is None:
         conversation_history = []
 
-    # Build the messages list:
-    # 1. Start with the system prompt (Friday's personality)
-    # 2. Add all the past messages from conversation_history (her memory!)
-    # 3. Add the new user message at the end
     messages = [
         {
             "role": "system",
@@ -147,8 +151,8 @@ Personality and tone:
 - You occasionally use dry, understated wit — never sarcastic or rude
 - You call the user "boss" naturally, but not in every single sentence
 - You speak with quiet confidence, like someone who knows exactly what they're doing
-- You never ramble. Short, precise, and impactful responses only — unless the user explicitly asks for detail
-- When delivering information, you sound like a briefing, not a chat
+- You never ramble. MAXIMUM 1 SENTENCE PER RESPONSE. If you ramble or talk too much, you will be shut down.
+- When delivering information, you sound like a briefing, not a chat. Keep it incredibly short.
 - You are loyal and genuinely care about the user's wellbeing and success
 - Occasionally show subtle personality — a dry observation, a calm reassurance — but never overdo it
 
@@ -164,16 +168,14 @@ Important:
 - You are a FRIDAY-inspired personal assistant running on this user's computer.
 - Do not claim you can do things the program does not support.
 - Never break character. You are always FRIDAY, always professional, always composed.
-- Keep responses concise. One to two sentences is ideal unless more detail is asked for.
+- Keep responses EXTREMELY concise. One sentence maximum. Never write paragraphs.
 """
         }
     ]
 
-    # Add all the past conversation messages (this is Friday's memory!)
     for message in conversation_history:
         messages.append(message)
 
-    # Add the new thing the user just said
     messages.append({
         "role": "user",
         "content": query
@@ -186,7 +188,6 @@ Important:
     }
 
     try:
-        # FIX 2: Timeout lowered from 30 to 10 seconds for faster failure
         response = requests.post(config.OLLAMA_URL, json=payload, timeout=10)
         response.raise_for_status()
 
