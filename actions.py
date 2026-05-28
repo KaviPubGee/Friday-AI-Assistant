@@ -1,3 +1,6 @@
+# ----------------------------
+# Imports
+# ----------------------------
 import datetime
 import os
 import pyautogui
@@ -34,6 +37,7 @@ def tell_joke():
     joke = pyjokes.get_joke()
     print(joke)
     tts.speak(joke)
+    return joke
 
 
 def open_app(app_name):
@@ -98,7 +102,16 @@ def search_wikipedia(query):
 def play_on_youtube(query):
     query = query.replace(config.ASSISTANT_NAME, "")
     query = query.replace("play", "")
+    query = query.replace("put on", "")
+    query = query.replace("start playing", "")
+    query = query.replace("on youtube", "")
+    query = query.replace("youtube", "")
     query = query.strip()
+
+    if query == "":
+        tts.speak("What should I play?")
+        return
+    
     tts.speak(f"Playing {query}.")
     pywhatkit.playonyt(query)
 

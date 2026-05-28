@@ -25,6 +25,11 @@ WAKE_WORDS = [
     "phriday"
 ]
 
+AI_BRAIN_ENABLED = True
+AI_PROVIDER = "ollama"
+OLLAMA_MODEL = "llama3.2:3b"
+OLLAMA_URL = "http://localhost:11434/api/chat"
+
 # Edge TTS voice
 VOICE = "en-GB-SoniaNeural"
 VOICE_AUDIO_FILE = "friday_voice.mp3"
@@ -66,13 +71,31 @@ DEFAULT_ROUTINES = {
 }
 
 ROUTINE_ALIASES = {
-    "let's get to work": "work mode",
-    "lets get to work": "work mode",
-    "time to work": "work mode",
-    "start work": "work mode",
-    "dev mode": "work mode",
-    "development mode": "work mode"
+    "get to work": "work mode",
+    "we get to work": "work mode",
+    "let us get to work": "work mode",
+    "let's work": "work mode",
+    "lets work": "work mode",
+    "work today": "work mode",
+    "start working": "work mode",
+    "coding mode": "work mode",
+    "game dev mode": "work mode",
 }
+
+ALLOWED_INTENTS = [
+    "open_app",
+    "run_routine",
+    "tell_time",
+    "play_youtube",
+    "search_wikipedia",
+    "joke",
+    "thanks",
+    "sleep",
+    "shutdown",
+    "typing_mode",
+    "ducks",
+    "unknown"
+]
 
 
 # ----------------------------
